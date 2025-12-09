@@ -3,6 +3,12 @@ KSeFXAdESClient – KSeF 2.0, FA(3), XAdES + AES
 ☕ Jeśli chcesz mi podziękować za tę klasę / bibliotekę, możesz postawić mi wirtualną kawę:
 👉 https://suppi.pl/audev
 
+Gotowe rozwiązanie KSeF bez martwienia się o infrastrukturę
+
+Jeśli nie chcesz samodzielnie utrzymywać serwera, certyfikatów, cronów i całej logiki integracji z KSeF, zapraszam do skorzystania z gotowego systemu: https://ksefservice.pl/
+
+Cała infrastruktura (serwer, bezpieczeństwo, aktualizacje, monitoring) jest po naszej stronie – Ty tylko korzystasz z systemu i/lub prostego API do wystawiania i wysyłki faktur FA(3) do KSeF.
+
 ### W sprawie integracji, wsparcia technicznego lub wdrożenia biblioteki w Twoim systemie proszę o kontakt:
 
 📧 adrian@bsd-net.pl
