@@ -2,6 +2,8 @@
 // validate_fa3.php
 declare(strict_types=1);
 
+use DOMDocument;
+
 // Konfiguracja domyślnego XSD:
 const DEFAULT_XSD_URL = 'https://serwer.pl/ksef/schemat-fa3.xsd';
 
@@ -28,19 +30,28 @@ function validateXmlAgainstXsd(string $xmlContent, string $xsdUrl): array {
 function formatLibxmlErrors(array $errors, string $title = 'Błędy'): array {
     $out = [];
     foreach ($errors as $err) {
-        $level = match ($err->level) {
-            LIBXML_ERR_WARNING => 'Ostrzeżenie',
-            LIBXML_ERR_ERROR   => 'Błąd',
-            LIBXML_ERR_FATAL   => 'Błąd krytyczny',
-            default            => 'Info',
-        };
+        switch ($err->level) {
+            case LIBXML_ERR_WARNING:
+                $level = 'Ostrzeżenie';
+                break;
+            case LIBXML_ERR_ERROR:
+                $level = 'Błąd';
+                break;
+            case LIBXML_ERR_FATAL:
+                $level = 'Błąd krytyczny';
+                break;
+            default:
+                $level = 'Info';
+                break;
+        }
+
         $out[] = [
-            'level'   => $level,
-            'code'    => $err->code,
-            'line'    => $err->line,
-            'column'  => $err->column,
+            'level' => $level,
+            'code' => $err->code,
+            'line' => $err->line,
+            'column' => $err->column,
             'message' => trim($err->message),
-            'file'    => $err->file ?: null,
+            'file' => $err->file ?: null,
         ];
     }
     libxml_clear_errors();

@@ -1,4 +1,5 @@
 <?php
+
 /**
 Klasę wrzucam do wsadowego wysyłania faktur, ale jest dość skomplikowana, ponieważ działa w warunkach konkretnej bazy danych, 
 przypisanej do określonych tabel. 
@@ -18,7 +19,7 @@ Przykładowy Cron:
 
 class KsefBatchSender
 {
-    private PDO $pdo;
+    private \PDO $pdo;
     private string $masterKey;
 
     private string $apiUrl;              // address z ksef_addres_api (np. https://ksef-test.mf.gov.pl)
@@ -43,7 +44,7 @@ class KsefBatchSender
     public function __construct(string $sessionToken)
     {
         if (trim($sessionToken) === '') {
-            throw new RuntimeException('Pusty sessionToken w konstruktorze KsefBatchSender.');
+            throw new \RuntimeException('Pusty sessionToken w konstruktorze KsefBatchSender.');
         }
         $this->sessionToken = trim($sessionToken);
 
@@ -51,21 +52,21 @@ class KsefBatchSender
         // spodziewane zmienne: $remoteDsn, $remoteUsername, $remotePassword, $ksefMasterKey
 
         if (empty($remoteDsn) || empty($remoteUsername)) {
-            throw new RuntimeException('Brak poprawnej konfiguracji bazy w config_db.php');
+            throw new \RuntimeException('Brak poprawnej konfiguracji bazy w config_db.php');
         }
         if (empty($ksefMasterKey)) {
-            throw new RuntimeException('Brak zdefiniowanego $ksefMasterKey (KSEF_MASTER_KEY).');
+            throw new \RuntimeException('Brak zdefiniowanego $ksefMasterKey (KSEF_MASTER_KEY).');
         }
 
         $this->masterKey = $ksefMasterKey;
 
-        $this->pdo = new PDO(
+        $this->pdo = new \PDO(
             $remoteDsn,
             $remoteUsername,
             $remotePassword,
             [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+                \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
             ]
         );
 
@@ -154,14 +155,14 @@ class KsefBatchSender
         $partUploadRequests = $response['partUploadRequests'] ?? [];
 
         if (!$batchRef) {
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'Brak numeru referencyjnego wsadu w odpowiedzi z KSeF: ' .
                 json_encode($response, JSON_UNESCAPED_UNICODE)
             );
         }
 
         if (empty($partUploadRequests)) {
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'Brak partUploadRequests w odpowiedzi z KSeF – nie mam gdzie wysłać zaszyfrowanego ZIP-a: ' .
                 json_encode($response, JSON_UNESCAPED_UNICODE)
             );
@@ -218,7 +219,7 @@ public function showBatchSessionFromList(string $referenceNumber): void
 {
     $referenceNumber = trim($referenceNumber);
     if ($referenceNumber === '') {
-        throw new RuntimeException('showBatchSessionFromList: pusty referenceNumber.');
+        throw new \RuntimeException('showBatchSessionFromList: pusty referenceNumber.');
     }
 
     $result = $this->callSessionsListEndpoint([
@@ -289,18 +290,18 @@ private function callSessionsListEndpoint(array $query): array
     curl_close($ch);
 
     if ($respBody === false) {
-        throw new RuntimeException('Błąd cURL przy /v2/sessions: ' . $err);
+        throw new \RuntimeException('Błąd cURL przy /v2/sessions: ' . $err);
     }
 
     if ($httpCode < 200 || $httpCode >= 300) {
-        throw new RuntimeException(
+        throw new \RuntimeException(
             'KSeF HTTP ' . $httpCode . ' przy /v2/sessions: ' . $respBody
         );
     }
 
     $data = json_decode($respBody, true);
     if (!is_array($data)) {
-        throw new RuntimeException('Niepoprawny JSON z /v2/sessions: ' . $respBody);
+        throw new \RuntimeException('Niepoprawny JSON z /v2/sessions: ' . $respBody);
     }
 
     return $data;
@@ -349,11 +350,11 @@ private function callSessionsListEndpoint(array $query): array
             curl_close($ch);
 
             if ($respBody === false) {
-                throw new RuntimeException('Błąd cURL przy uploadzie ZIP-a do storage: ' . $err);
+                throw new \RuntimeException('Błąd cURL przy uploadzie ZIP-a do storage: ' . $err);
             }
 
             if ($httpCode < 200 || $httpCode >= 300) {
-                throw new RuntimeException(
+                throw new \RuntimeException(
                     'Błąd uploadu ZIP-a do storage (HTTP ' . $httpCode . '): ' . $respBody
                 );
             }
@@ -419,17 +420,17 @@ HT;
         $row  = $stmt->fetch();
 
         if (!$row) {
-            throw new RuntimeException('Brak aktywnej konfiguracji KSeF (ksef_addres_api.selected = 1).');
+            throw new \RuntimeException('Brak aktywnej konfiguracji KSeF (ksef_addres_api.selected = 1).');
         }
 
         $this->apiUrl = rtrim(trim((string)$row['address']), '/'); // np. https://ksef-test.mf.gov.pl
         $this->nip    = trim((string)$row['nip']);
 
         if ($this->apiUrl === '') {
-            throw new RuntimeException('Puste address w ksef_addres_api (selected = 1).');
+            throw new \RuntimeException('Puste address w ksef_addres_api (selected = 1).');
         }
         if ($this->nip === '') {
-            throw new RuntimeException('Pusty nip w ksef_addres_api (selected = 1).');
+            throw new \RuntimeException('Pusty nip w ksef_addres_api (selected = 1).');
         }
 
         $encryptedCert  = $row['Certyfikat'] ?? null;
@@ -515,7 +516,7 @@ HT;
     {
         $numer = trim($numer);
         if ($numer === '') {
-            throw new RuntimeException('markAsSent: pusty numer faktury.');
+            throw new \RuntimeException('markAsSent: pusty numer faktury.');
         }
 
         $fields = [];
@@ -543,7 +544,7 @@ HT;
         $stmt->execute($params);
 
         if ($stmt->rowCount() === 0) {
-            throw new RuntimeException('markAsSent: nie znaleziono faktury o numerze ' . $numer);
+            throw new \RuntimeException('markAsSent: nie znaleziono faktury o numerze ' . $numer);
         }
     }
 	
@@ -553,10 +554,10 @@ HT;
         $errorMessage = trim($errorMessage);
 
         if ($numer === '') {
-            throw new RuntimeException('markAsError: pusty numer.');
+            throw new \RuntimeException('markAsError: pusty numer.');
         }
         if ($errorMessage === '') {
-            throw new RuntimeException('markAsError: pusty komunikat błędu.');
+            throw new \RuntimeException('markAsError: pusty komunikat błędu.');
         }
 
         $sql = "
@@ -574,7 +575,7 @@ HT;
         ]);
 
         if ($stmt->rowCount() === 0) {
-            throw new RuntimeException('markAsError: nie znaleziono faktury o numerze ' . $numer);
+            throw new \RuntimeException('markAsError: nie znaleziono faktury o numerze ' . $numer);
         }
     }
 	
@@ -589,16 +590,16 @@ HT;
     $upoUrl        = trim($upoUrl);
 
     if ($invoiceNumber === '') {
-        throw new RuntimeException('downloadAndStoreInvoiceUpo: pusty numer faktury.');
+        throw new \RuntimeException('downloadAndStoreInvoiceUpo: pusty numer faktury.');
     }
     if ($upoUrl === '') {
-        throw new RuntimeException('downloadAndStoreInvoiceUpo: pusty URL UPO.');
+        throw new \RuntimeException('downloadAndStoreInvoiceUpo: pusty URL UPO.');
     }
 
     // ⚠️ UWAGA: to jest SAS URL, NIE dodajemy Authorization!
     $ch = curl_init($upoUrl);
     if ($ch === false) {
-        throw new RuntimeException('curl_init() zwrócił false przy pobieraniu UPO.');
+        throw new \RuntimeException('curl_init() zwrócił false przy pobieraniu UPO.');
     }
 
     $headers = [
@@ -621,15 +622,15 @@ HT;
     curl_close($ch);
 
     if ($body === false) {
-        throw new RuntimeException('Błąd cURL przy pobieraniu UPO: ' . $err);
+        throw new \RuntimeException('Błąd cURL przy pobieraniu UPO: ' . $err);
     }
     if ($httpCode !== 200) {
-        throw new RuntimeException('HTTP ' . $httpCode . ' przy pobieraniu UPO: ' . substr($body, 0, 1000));
+        throw new \RuntimeException('HTTP ' . $httpCode . ' przy pobieraniu UPO: ' . substr($body, 0, 1000));
     }
 
     $upoXml = trim($body);
     if ($upoXml === '') {
-        throw new RuntimeException('downloadAndStoreInvoiceUpo: puste UPO XML.');
+        throw new \RuntimeException('downloadAndStoreInvoiceUpo: puste UPO XML.');
     }
 
     // zapis do baza_fv.xml_Content
@@ -642,7 +643,7 @@ HT;
     ]);
 
     if ($stmt->rowCount() === 0) {
-        throw new RuntimeException(
+        throw new \RuntimeException(
             'downloadAndStoreInvoiceUpo: nie znaleziono faktury o numerze ' . $invoiceNumber
         );
     }
@@ -662,7 +663,7 @@ HT;
 {
     $referenceNumber = trim($referenceNumber);
     if ($referenceNumber === '') {
-        throw new RuntimeException('processBatchStatus: pusty referenceNumber.');
+        throw new \RuntimeException('processBatchStatus: pusty referenceNumber.');
     }
 
     $status = $this->callSessionStatusEndpoint($referenceNumber);
@@ -713,7 +714,7 @@ HT;
     {
         $referenceNumber = trim($referenceNumber);
         if ($referenceNumber === '') {
-            throw new RuntimeException('submitBatch: pusty referenceNumber.');
+            throw new \RuntimeException('submitBatch: pusty referenceNumber.');
         }
 
         $resp = $this->callBatchSubmitEndpoint($referenceNumber);
@@ -734,7 +735,7 @@ HT;
     ): array {
         $referenceNumber = trim($referenceNumber);
         if ($referenceNumber === '') {
-            throw new RuntimeException('callSessionInvoicesEndpoint: pusty referenceNumber.');
+            throw new \RuntimeException('callSessionInvoicesEndpoint: pusty referenceNumber.');
         }
 
         // wg innych endpointów – pageSize między 10 a 500
@@ -773,18 +774,18 @@ HT;
         curl_close($ch);
 
         if ($respBody === false) {
-            throw new RuntimeException('Błąd cURL przy /v2/sessions/{referenceNumber}/invoices: ' . $err);
+            throw new \RuntimeException('Błąd cURL przy /v2/sessions/{referenceNumber}/invoices: ' . $err);
         }
 
         if ($httpCode < 200 || $httpCode >= 300) {
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'KSeF HTTP ' . $httpCode . ' przy /v2/sessions/{referenceNumber}/invoices: ' . $respBody
             );
         }
 
         $data = json_decode($respBody, true);
         if (!is_array($data)) {
-            throw new RuntimeException('Niepoprawny JSON z /v2/sessions/{referenceNumber}/invoices: ' . $respBody);
+            throw new \RuntimeException('Niepoprawny JSON z /v2/sessions/{referenceNumber}/invoices: ' . $respBody);
         }
 
         return $data;
@@ -801,7 +802,7 @@ HT;
     {
         $referenceNumber = trim($referenceNumber);
         if ($referenceNumber === '') {
-            throw new RuntimeException('processBatchInvoices: pusty referenceNumber.');
+            throw new \RuntimeException('processBatchInvoices: pusty referenceNumber.');
         }
 
         echo "Faktury w sesji wsadowej (referenceNumber: {$referenceNumber}):\n";
@@ -919,7 +920,7 @@ HT;
     {
         $referenceNumber = trim($referenceNumber);
         if ($referenceNumber === '') {
-            throw new RuntimeException('closeBatch: pusty referenceNumber.');
+            throw new \RuntimeException('closeBatch: pusty referenceNumber.');
         }
 
         $url = $this->buildApiUrl(
@@ -946,12 +947,12 @@ HT;
         curl_close($ch);
 
         if ($respBody === false) {
-            throw new RuntimeException('Błąd cURL przy closeBatch: ' . $err);
+            throw new \RuntimeException('Błąd cURL przy closeBatch: ' . $err);
         }
 
         // 2xx = sukces, ale czasem 204 / pusty body
         if ($httpCode < 200 || $httpCode >= 300) {
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'KSeF HTTP ' . $httpCode . ' przy closeBatch: ' . $respBody
             );
         }
@@ -1022,18 +1023,18 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
         curl_close($ch);
 
         if ($respBody === false) {
-            throw new RuntimeException('Błąd cURL przy /v2/sessions/{referenceNumber}: ' . $err);
+            throw new \RuntimeException('Błąd cURL przy /v2/sessions/{referenceNumber}: ' . $err);
         }
 
         if ($httpCode < 200 || $httpCode >= 300) {
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'KSeF HTTP ' . $httpCode . ' przy /v2/sessions/{referenceNumber}: ' . $respBody
             );
         }
 
         $data = json_decode($respBody, true);
         if (!is_array($data)) {
-            throw new RuntimeException('Niepoprawny JSON z /v2/sessions/{referenceNumber}: ' . $respBody);
+            throw new \RuntimeException('Niepoprawny JSON z /v2/sessions/{referenceNumber}: ' . $respBody);
         }
 
         return $data;
@@ -1070,18 +1071,18 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
         curl_close($ch);
 
         if ($respBody === false) {
-            throw new RuntimeException('Błąd cURL przy submitBatch: ' . $err);
+            throw new \RuntimeException('Błąd cURL przy submitBatch: ' . $err);
         }
 
         if ($httpCode < 200 || $httpCode >= 300) {
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 'KSeF HTTP ' . $httpCode . ' przy submitBatch: ' . $respBody
             );
         }
 
         $data = json_decode($respBody, true);
         if (!is_array($data)) {
-            throw new RuntimeException('Niepoprawny JSON z submitBatch: ' . $respBody);
+            throw new \RuntimeException('Niepoprawny JSON z submitBatch: ' . $respBody);
         }
 
         return $data;
@@ -1095,16 +1096,16 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
 
         $tmp = tmpfile();
         if ($tmp === false) {
-            throw new RuntimeException('Nie udało się stworzyć pliku tymczasowego ZIP.');
+            throw new \RuntimeException('Nie udało się stworzyć pliku tymczasowego ZIP.');
         }
 
         $meta = stream_get_meta_data($tmp);
         $path = $meta['uri'];
 
-        $zip = new ZipArchive();
-        if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        $zip = new \ZipArchive();
+        if ($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             fclose($tmp);
-            throw new RuntimeException('Nie udało się otworzyć ZIP.');
+            throw new \RuntimeException('Nie udało się otworzyć ZIP.');
         }
 
         foreach ($invoices as $fv) {
@@ -1132,7 +1133,7 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
         fclose($tmp);
 
         if ($zipBinary === false || $zipBinary === '') {
-            throw new RuntimeException('ZIP jest pusty albo nieczytelny.');
+            throw new \RuntimeException('ZIP jest pusty albo nieczytelny.');
         }
 
         return $zipBinary;
@@ -1159,7 +1160,7 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
     );
 
     if ($zipEncrypted === false) {
-        throw new RuntimeException('Błąd szyfrowania ZIP (AES-256-CBC).');
+        throw new \RuntimeException('Błąd szyfrowania ZIP (AES-256-CBC).');
     }
 
     // 3. przygotowanie plików tymczasowych
@@ -1193,7 +1194,7 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
         @unlink($tmpCertFile);
         @unlink($tmpPubFile);
         @unlink($tmpEncFile);
-        throw new RuntimeException($msg);
+        throw new \RuntimeException($msg);
     }
 
     // 5. szyfrowanie klucza symetrycznego RSA-OAEP-SHA256 + MGF1-SHA256
@@ -1219,7 +1220,7 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
         @unlink($tmpCertFile);
         @unlink($tmpPubFile);
         @unlink($tmpEncFile);
-        throw new RuntimeException($msg);
+        throw new \RuntimeException($msg);
     }
 
     $encryptedSymKey = file_get_contents($tmpEncFile);
@@ -1231,7 +1232,7 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
     @unlink($tmpEncFile);
 
     if ($encryptedSymKey === false || strlen($encryptedSymKey) === 0) {
-        throw new RuntimeException('Nie udało się odczytać zaszyfrowanego klucza RSA.');
+        throw new \RuntimeException('Nie udało się odczytać zaszyfrowanego klucza RSA.');
     }
 
     // 7. metadane i skróty
@@ -1263,7 +1264,7 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
         $this->mfPublicKeyPem = $this->fetchMfPublicKeyFromKsef();
 
         if (trim($this->mfPublicKeyPem) === '') {
-            throw new RuntimeException('Nie udało się pobrać klucza publicznego MF z KSeF.');
+            throw new \RuntimeException('Nie udało się pobrać klucza publicznego MF z KSeF.');
         }
     }
 
@@ -1289,18 +1290,18 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
     curl_close($ch);
 
     if ($respBody === false) {
-        throw new RuntimeException('Błąd cURL przy pobieraniu certyfikatów z KSeF: ' . $err);
+        throw new \RuntimeException('Błąd cURL przy pobieraniu certyfikatów z KSeF: ' . $err);
     }
 
     if ($httpCode < 200 || $httpCode >= 300) {
-        throw new RuntimeException(
+        throw new \RuntimeException(
             'KSeF HTTP ' . $httpCode . ' przy /v2/security/public-key-certificates: ' . $respBody
         );
     }
 
     $data = json_decode($respBody, true);
     if (!is_array($data)) {
-        throw new RuntimeException('Niepoprawny JSON z /v2/security/public-key-certificates: ' . $respBody);
+        throw new \RuntimeException('Niepoprawny JSON z /v2/security/public-key-certificates: ' . $respBody);
     }
 
     $selectedCertB64 = null;
@@ -1326,7 +1327,7 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
     } // <-- TUTAJ brakowało klamry w Twojej wersji
 
     if ($selectedCertB64 === null) {
-        throw new RuntimeException('Nie znaleziono certyfikatu MF z usage = SymmetricKeyEncryption.');
+        throw new \RuntimeException('Nie znaleziono certyfikatu MF z usage = SymmetricKeyEncryption.');
     }
 
     $body = chunk_split($selectedCertB64, 64, "\n");
@@ -1366,16 +1367,16 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
         curl_close($ch);
 
         if ($respBody === false) {
-            throw new RuntimeException('Błąd cURL przy /v2/sessions/batch: ' . $err);
+            throw new \RuntimeException('Błąd cURL przy /v2/sessions/batch: ' . $err);
         }
 
         if ($httpCode < 200 || $httpCode >= 300) {
-            throw new RuntimeException('KSeF HTTP ' . $httpCode . ' przy /v2/sessions/batch: ' . $respBody);
+            throw new \RuntimeException('KSeF HTTP ' . $httpCode . ' przy /v2/sessions/batch: ' . $respBody);
         }
 
         $data = json_decode($respBody, true);
         if (!is_array($data)) {
-            throw new RuntimeException('Niepoprawny JSON z /v2/sessions/batch: ' . $respBody);
+            throw new \RuntimeException('Niepoprawny JSON z /v2/sessions/batch: ' . $respBody);
         }
 
         return $data;

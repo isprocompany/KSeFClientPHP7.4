@@ -54,7 +54,7 @@ final class KSeFXAdESClient
             $auth = $this->authenticateOnce();
         }
         if (empty($auth['accessToken'])) {
-            throw new RuntimeException('Nie uzyskano accessToken: ' . json_encode($auth, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+            throw new \RuntimeException('Nie uzyskano accessToken: ' . json_encode($auth, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
         }
         return $auth;
     }
@@ -69,7 +69,7 @@ final class KSeFXAdESClient
         $authToken  = $authResp['authenticationToken']['token']      ?? null;
         $validUntil = $authResp['authenticationToken']['validUntil'] ?? null;
         if (!$authToken) {
-            throw new RuntimeException('Brak authenticationToken.token: ' . json_encode($authResp, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+            throw new \RuntimeException('Brak authenticationToken.token: ' . json_encode($authResp, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
         }
 
         try {
@@ -85,7 +85,7 @@ final class KSeFXAdESClient
                 'rawAuth'      => $authResp,
                 'rawAccess'    => $accessResp,
             ];
-        } catch (RuntimeException $e) {
+        } catch (\RuntimeException $e) {
             if (str_contains($e->getMessage(), 'HTTP 401')) {
                 return [
                     'authToken'   => (string)$authToken,
@@ -106,7 +106,7 @@ final class KSeFXAdESClient
     }
 
     /** Wywołanie chronionego endpointu z Bearer. */
-    public function callProtected(string $path, string $accessToken, array|string|null $body = null, string $method = 'POST'): array
+    public function callProtected(string $path, string $accessToken, $body = null, string $method = 'POST'): array
     {
         $url = $this->absoluteUrl($path);
         $payload = is_array($body) ? json_encode($body, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : $body;
@@ -121,16 +121,16 @@ final class KSeFXAdESClient
 
         $raw = curl_exec($ch);
         $info = curl_getinfo($ch);
-        if ($raw === false) { $e = curl_error($ch); curl_close($ch); throw new RuntimeException('cURL error: ' . $e); }
+        if ($raw === false) { $e = curl_error($ch); curl_close($ch); throw new \RuntimeException('cURL error: ' . $e); }
         curl_close($ch);
 
         $code = (int)($info['http_code'] ?? 0);
         $decoded = json_decode($raw, true);
         if ($decoded === null && $raw !== '' && $raw !== 'null') {
-            throw new RuntimeException("Niepoprawny JSON z {$url} (HTTP {$code}): " . $raw);
+            throw new \RuntimeException("Niepoprawny JSON z {$url} (HTTP {$code}): " . $raw);
         }
         if ($code >= 400) {
-            throw new RuntimeException("Błąd HTTP {$code}: " . ($decoded ? json_encode($decoded, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : $raw));
+            throw new \RuntimeException("Błąd HTTP {$code}: " . ($decoded ? json_encode($decoded, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) : $raw));
         }
         return $decoded ?? [];
     }
@@ -147,17 +147,17 @@ final class KSeFXAdESClient
 
         $raw = curl_exec($ch);
         $info = curl_getinfo($ch);
-        if ($raw === false) { $e = curl_error($ch); curl_close($ch); throw new RuntimeException('cURL error: ' . $e); }
+        if ($raw === false) { $e = curl_error($ch); curl_close($ch); throw new \RuntimeException('cURL error: ' . $e); }
         curl_close($ch);
 
         $code = (int)($info['http_code'] ?? 0);
         $decoded = json_decode($raw, true);
         if ($decoded === null) {
-            throw new RuntimeException("Niepoprawny JSON z challenge (HTTP {$code}): " . $raw);
+            throw new \RuntimeException("Niepoprawny JSON z challenge (HTTP {$code}): " . $raw);
         }
         $challenge = $decoded['challenge'] ?? null;
         if (!$challenge) {
-            throw new RuntimeException('Brak pola "challenge": ' . json_encode($decoded, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+            throw new \RuntimeException('Brak pola "challenge": ' . json_encode($decoded, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
         }
         return $challenge;
     }
@@ -246,7 +246,7 @@ XML;
         if (file_put_contents($inPath, $xmlUnsigned) === false) {
             @unlink($inPath);
             @unlink($outPath);
-            throw new RuntimeException('Nie mogę zapisać pliku wejściowego: ' . $inPath);
+            throw new \RuntimeException('Nie mogę zapisać pliku wejściowego: ' . $inPath);
         }
 
         $keyForXmlsec = $this->keyPath;
@@ -264,7 +264,7 @@ XML;
                 ];
                 $this->run($cmd, $ret);
                 if ($ret !== 0 || !is_file($tmpKey) || filesize($tmpKey) === 0) {
-                    throw new RuntimeException('Nie udało się zdjąć hasła z klucza (openssl pkey).');
+                    throw new \RuntimeException('Nie udało się zdjąć hasła z klucza (openssl pkey).');
                 }
                 $keyForXmlsec = $tmpKey;
             }
@@ -279,12 +279,12 @@ XML;
             ];
             $out = $this->run($cmdSign, $retSign);
             if ($retSign !== 0 || !is_file($outPath) || filesize($outPath) === 0) {
-                throw new RuntimeException("Podpis xmlsec1 nie powiódł się (exit={$retSign}). Wyjście:\n".$out);
+                throw new \RuntimeException("Podpis xmlsec1 nie powiódł się (exit={$retSign}). Wyjście:\n".$out);
             }
 
             $signed = file_get_contents($outPath);
             if ($signed === false || $signed === '') {
-                throw new RuntimeException('Plik podpisany jest pusty.');
+                throw new \RuntimeException('Plik podpisany jest pusty.');
             }
 
             // opcjonalna walidacja
@@ -319,13 +319,13 @@ XML;
 
         $raw = curl_exec($ch);
         $info = curl_getinfo($ch);
-        if ($raw === false) { $e = curl_error($ch); curl_close($ch); throw new RuntimeException('cURL error: ' . $e); }
+        if ($raw === false) { $e = curl_error($ch); curl_close($ch); throw new \RuntimeException('cURL error: ' . $e); }
         curl_close($ch);
 
         $code = (int)($info['http_code'] ?? 0);
         $decoded = json_decode($raw, true);
-        if ($decoded === null) throw new RuntimeException("Niepoprawny JSON (HTTP {$code}): ".$raw);
-        if ($code >= 400)   throw new RuntimeException("Błąd HTTP {$code} przy xades-signature: ".json_encode($decoded, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
+        if ($decoded === null) throw new \RuntimeException("Niepoprawny JSON (HTTP {$code}): ".$raw);
+        if ($code >= 400)   throw new \RuntimeException("Błąd HTTP {$code} przy xades-signature: ".json_encode($decoded, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
         return $decoded;
     }
 
@@ -342,7 +342,7 @@ XML;
         $err  = $raw === false ? curl_error($ch) : null;
         curl_close($ch);
 
-        if ($raw === false) throw new RuntimeException('cURL error (access-token): ' . $err);
+        if ($raw === false) throw new \RuntimeException('cURL error (access-token): ' . $err);
 
         if ($code === 405) { // fallback GET (historyczne zachowanie)
             $ch = curl_init($urlPrimary);
@@ -352,7 +352,7 @@ XML;
             $code= (int)($info['http_code'] ?? 0);
             $err = $raw === false ? curl_error($ch) : null;
             curl_close($ch);
-            if ($raw === false) throw new RuntimeException('cURL error (access-token GET): ' . $err);
+            if ($raw === false) throw new \RuntimeException('cURL error (access-token GET): ' . $err);
         }
 
         if ($code === 401) {
@@ -370,7 +370,7 @@ XML;
                 if ($codeAlt < 400 && is_array($decAlt)) return $decAlt;
             }
 
-            throw new RuntimeException(
+            throw new \RuntimeException(
                 "Błąd HTTP 401 przy access-token.\n" .
                 "- Token auth jest jednorazowy – jeśli już był wymieniony, drugi raz się nie uda.\n" .
                 "- Sprawdź czy nie ma podwójnego reloadu oraz czy zegar (NTP) jest poprawny.\n" .
@@ -379,8 +379,8 @@ XML;
         }
 
         $decoded = json_decode($raw, true);
-        if ($decoded === null) throw new RuntimeException("Niepoprawny JSON z access-token (HTTP {$code}): " . $raw);
-        if ($code >= 400)     throw new RuntimeException("Błąd HTTP {$code} przy access-token: " . json_encode($decoded, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+        if ($decoded === null) throw new \RuntimeException("Niepoprawny JSON z access-token (HTTP {$code}): " . $raw);
+        if ($code >= 400)     throw new \RuntimeException("Błąd HTTP {$code} przy access-token: " . json_encode($decoded, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
         return $decoded;
     }
 
@@ -396,12 +396,12 @@ XML;
     {
         foreach (['systemCode','schemaVersion','value'] as $k) {
             if (!isset($formCode[$k]) || !is_string($formCode[$k]) || $formCode[$k] === '') {
-                throw new InvalidArgumentException("Brak/niepoprawne formCode['{$k}'].");
+                throw new \InvalidArgumentException("Brak/niepoprawne formCode['{$k}'].");
             }
         }
         foreach (['encryptedSymmetricKey','initializationVector'] as $k) {
             if (!isset($encryption[$k]) || !is_string($encryption[$k]) || $encryption[$k] === '') {
-                throw new InvalidArgumentException("Brak/niepoprawne encryption['{$k}'].");
+                throw new \InvalidArgumentException("Brak/niepoprawne encryption['{$k}'].");
             }
         }
         $body = ['formCode' => $formCode, 'encryption' => $encryption];
@@ -417,24 +417,24 @@ XML;
 
         $raw = curl_exec($ch);
         $info = curl_getinfo($ch);
-        if ($raw === false) { $e = curl_error($ch); curl_close($ch); throw new RuntimeException('cURL error: ' . $e); }
+        if ($raw === false) { $e = curl_error($ch); curl_close($ch); throw new \RuntimeException('cURL error: ' . $e); }
         curl_close($ch);
 
         $code = (int)($info['http_code'] ?? 0);
         if ($code === 200) {
             $decoded = json_decode($raw, true);
-            if (!is_array($decoded)) throw new RuntimeException('Niepoprawny JSON (200): ' . $raw);
+            if (!is_array($decoded)) throw new \RuntimeException('Niepoprawny JSON (200): ' . $raw);
             return $decoded;
         }
         if ($code === 400) {
             $err = json_decode($raw, true);
             if (isset($err['Exception'])) {
                 $msg = $this->formatKsefException($err['Exception']);
-                throw new RuntimeException("KSeF 400: {$msg}");
+                throw new \RuntimeException("KSeF 400: {$msg}");
             }
-            throw new RuntimeException("KSeF 400: " . $raw);
+            throw new \RuntimeException("KSeF 400: " . $raw);
         }
-        throw new RuntimeException("Błąd HTTP {$code}: " . $raw);
+        throw new \RuntimeException("Błąd HTTP {$code}: " . $raw);
     }
 
     public function getPublicKeyCertificatesPem(?string $usageFilter = null): array
@@ -498,12 +498,12 @@ XML;
     public function prepareInteractiveEncryption(int $ivLen = 16): array
     {
         if ($ivLen !== 16) {
-            throw new InvalidArgumentException('Dla AES-256-CBC IV musi mieć 16 bajtów.');
+            throw new \InvalidArgumentException('Dla AES-256-CBC IV musi mieć 16 bajtów.');
         }
 
         $candidates = $this->getPublicKeyCertificatesPem('SymmetricKeyEncryption');
         if (empty($candidates)) {
-            throw new RuntimeException('Brak certyfikatów usage=SymmetricKeyEncryption.');
+            throw new \RuntimeException('Brak certyfikatów usage=SymmetricKeyEncryption.');
         }
 
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
@@ -516,7 +516,7 @@ XML;
 
         $pem = $chosen['pem'];
         if (!$this->isRsaPublicKeyPem($pem)) {
-            throw new RuntimeException('Wybrany certyfikat KSeF nie jest RSA (wymagany dla RSA-OAEP).');
+            throw new \RuntimeException('Wybrany certyfikat KSeF nie jest RSA (wymagany dla RSA-OAEP).');
         }
 
         $aesKey = random_bytes(32);        // AES-256
@@ -574,13 +574,13 @@ XML;
                 ];
                 $out2 = $this->run($cmd2, $ret2);
                 if ($ret2 !== 0 || !is_file($outFile) || filesize($outFile) === 0) {
-                    throw new RuntimeException("RSA-OAEP szyfrowanie nie powiodło się.\n1) {$out}\n2) {$out2}");
+                    throw new \RuntimeException("RSA-OAEP szyfrowanie nie powiodło się.\n1) {$out}\n2) {$out2}");
                 }
             }
 
             $cipher = file_get_contents($outFile);
             if ($cipher === false || $cipher === '') {
-                throw new RuntimeException('Pusty wynik szyfrowania klucza.');
+                throw new \RuntimeException('Pusty wynik szyfrowania klucza.');
             }
             return $cipher;
         } finally {
@@ -601,7 +601,7 @@ XML;
     {
         foreach (['invoiceHash','invoiceSize','encryptedInvoiceHash','encryptedInvoiceSize','encryptedInvoiceContent','offlineMode'] as $k) {
             if (!array_key_exists($k, $payload)) {
-                throw new InvalidArgumentException("Brak wymaganego pola payload['{$k}'].");
+                throw new \InvalidArgumentException("Brak wymaganego pola payload['{$k}'].");
             }
         }
         $path = "/api/v2/sessions/online/" . rawurlencode($sessionReferenceNumber) . "/invoices";
@@ -645,13 +645,13 @@ XML;
         $iv  = base64_decode($ivB64,  true);
 
         if ($key === false || $iv === false) {
-            throw new InvalidArgumentException('Nieprawidłowe Base64 dla klucza lub IV.');
+            throw new \InvalidArgumentException('Nieprawidłowe Base64 dla klucza lub IV.');
         }
         if (strlen($key) !== 32) {
-            throw new InvalidArgumentException('Klucz AES musi mieć 32 bajty (AES-256).');
+            throw new \InvalidArgumentException('Klucz AES musi mieć 32 bajty (AES-256).');
         }
         if (strlen($iv) !== 16) {
-            throw new InvalidArgumentException('IV dla AES-256-CBC musi mieć 16 bajtów.');
+            throw new \InvalidArgumentException('IV dla AES-256-CBC musi mieć 16 bajtów.');
         }
 
         $cipher = openssl_encrypt(
@@ -663,7 +663,7 @@ XML;
         );
 
         if ($cipher === false) {
-            throw new RuntimeException('Błąd AES-256-CBC (openssl_encrypt).');
+            throw new \RuntimeException('Błąd AES-256-CBC (openssl_encrypt).');
         }
 
         return [
@@ -676,8 +676,8 @@ XML;
     private function preChecks(): void
     {
         foreach (['xmlsec1', 'openssl'] as $bin) $this->assertBinary($bin);
-        if (!is_file($this->certPath)) throw new InvalidArgumentException('Brak pliku certyfikatu: ' . $this->certPath);
-        if (!is_file($this->keyPath))  throw new InvalidArgumentException('Brak pliku klucza: ' . $this->keyPath);
+        if (!is_file($this->certPath)) throw new \InvalidArgumentException('Brak pliku certyfikatu: ' . $this->certPath);
+        if (!is_file($this->keyPath))  throw new \InvalidArgumentException('Brak pliku klucza: ' . $this->keyPath);
     }
 
     private function absoluteUrl(string $path): string
@@ -691,14 +691,14 @@ XML;
     private function assertBinary(string $bin): void
     {
         $this->run(['bash','-lc', "command -v " . escapeshellarg($bin)], $ret);
-        if ($ret !== 0) throw new RuntimeException("Brak programu w PATH: {$bin}");
+        if ($ret !== 0) throw new \RuntimeException("Brak programu w PATH: {$bin}");
     }
 
     private function run(array $cmd, ?int &$exitCode = null): string
     {
         $desc = [1 => ['pipe','w'], 2 => ['pipe','w']];
         $p = proc_open($cmd, $desc, $pipes);
-        if (!\is_resource($p)) throw new RuntimeException('Nie udało się uruchomić procesu: ' . implode(' ', $cmd));
+        if (!\is_resource($p)) throw new \RuntimeException('Nie udało się uruchomić procesu: ' . implode(' ', $cmd));
         $out = stream_get_contents($pipes[1]); $err = stream_get_contents($pipes[2]);
         foreach ($pipes as $h) if (\is_resource($h)) fclose($h);
         $exitCode = proc_close($p);
@@ -719,11 +719,11 @@ XML;
         $fallback = __DIR__ . DIRECTORY_SEPARATOR . 'tmp';
         if (!is_dir($fallback)) {
             if (!mkdir($fallback, 0770, true) && !is_dir($fallback)) {
-                throw new RuntimeException('Nie mogę utworzyć katalogu tymczasowego: ' . $fallback);
+                throw new \RuntimeException('Nie mogę utworzyć katalogu tymczasowego: ' . $fallback);
             }
         }
         if (!is_writable($fallback)) {
-            throw new RuntimeException('Katalog tymczasowy nie jest zapisywalny: ' . $fallback);
+            throw new \RuntimeException('Katalog tymczasowy nie jest zapisywalny: ' . $fallback);
         }
 
         return rtrim($fallback, DIRECTORY_SEPARATOR);
@@ -740,28 +740,28 @@ XML;
     private function getCertSha256DigestBase64(): string
     {
         $out = $this->run(['bash','-lc', 'openssl x509 -in ' . escapeshellarg($this->certPath) . ' -outform der | openssl dgst -sha256 -binary | base64 -w0'], $ret);
-        if ($ret !== 0 || $out === '') throw new RuntimeException('Nie udało się policzyć digestu SHA256 certyfikatu.');
+        if ($ret !== 0 || $out === '') throw new \RuntimeException('Nie udało się policzyć digestu SHA256 certyfikatu.');
         return trim($out);
     }
 
     private function getIssuerDnString(): string
     {
         $out = $this->run(['bash','-lc', 'openssl x509 -in ' . escapeshellarg($this->certPath) . ' -noout -issuer | sed "s/^issuer=//"'], $ret);
-        if ($ret !== 0 || $out === '') throw new RuntimeException('Nie udało się odczytać issuer DN z certyfikatu.');
+        if ($ret !== 0 || $out === '') throw new \RuntimeException('Nie udało się odczytać issuer DN z certyfikatu.');
         return trim($out);
     }
 
     private function getSerialAsDecimal(): string
     {
         $hex = strtoupper(trim($this->run(['bash','-lc', 'openssl x509 -in ' . escapeshellarg($this->certPath) . ' -noout -serial | sed "s/^serial=//; s/://g"'], $ret)));
-        if ($ret !== 0 || $hex === '') throw new RuntimeException('Nie udało się odczytać numeru seryjnego z certyfikatu.');
+        if ($ret !== 0 || $hex === '') throw new \RuntimeException('Nie udało się odczytać numeru seryjnego z certyfikatu.');
         return $this->hexToDecBig($hex);
     }
 
     private function getCertBodyBase64(): string
     {
         $pem = file_get_contents($this->certPath);
-        if ($pem === false) throw new RuntimeException('Nie mogę wczytać certyfikatu.');
+        if ($pem === false) throw new \RuntimeException('Nie mogę wczytać certyfikatu.');
         if (preg_match('~-----BEGIN CERTIFICATE-----\s*(.+?)\s*-----END CERTIFICATE-----~s', $pem, $m)) return trim($m[1]);
         return chunk_split(base64_encode($pem), 64, "\n");
     }
@@ -842,12 +842,12 @@ XML;
             @mkdir($fallback, 0770, true);
         }
         if (!is_dir($fallback) || !is_writable($fallback)) {
-            throw new RuntimeException('Brak zapisywalnego katalogu tymczasowego (sys_get_temp_dir ani ' . $fallback . ').');
+            throw new \RuntimeException('Brak zapisywalnego katalogu tymczasowego (sys_get_temp_dir ani ' . $fallback . ').');
         }
 
         $path = @tempnam($fallback, $prefix);
         if ($path === false) {
-            throw new RuntimeException('tempnam() nie udało się ani w sys_get_temp_dir(), ani w ' . $fallback);
+            throw new \RuntimeException('tempnam() nie udało się ani w sys_get_temp_dir(), ani w ' . $fallback);
         }
 
         return $path;
@@ -859,10 +859,10 @@ XML;
      * Endpoint: POST /api/v2/sessions/online/{referenceNumber}/close
      *
      * Sukces: 204 (No Content)
-     * Błąd  : 400 (JSON z "Exception"…) -> rzuca RuntimeException z opisem.
+     * Błąd  : 400 (JSON z "Exception"…) -> rzuca \RuntimeException z opisem.
      *
      * @return true Zwraca true przy 204.
-     * @throws RuntimeException przy kodach >= 400 lub problemach transportowych.
+     * @throws \RuntimeException przy kodach >= 400 lub problemach transportowych.
      */
     public function closeInteractiveSession(string $accessToken, string $sessionReferenceNumber): bool
     {
@@ -880,7 +880,7 @@ XML;
         if ($raw === false) {
             $err = curl_error($ch);
             curl_close($ch);
-            throw new RuntimeException('cURL error przy zamykaniu sesji: ' . $err);
+            throw new \RuntimeException('cURL error przy zamykaniu sesji: ' . $err);
         }
         $code = (int)($info['http_code'] ?? 0);
         curl_close($ch);
@@ -893,20 +893,20 @@ XML;
             $err = json_decode($raw, true);
             if (is_array($err) && isset($err['Exception'])) {
                 $msg = $this->formatKsefException($err['Exception']);
-                throw new RuntimeException("KSeF 400 (close session): {$msg}");
+                throw new \RuntimeException("KSeF 400 (close session): {$msg}");
             }
-            throw new RuntimeException("KSeF 400 (close session): " . $raw);
+            throw new \RuntimeException("KSeF 400 (close session): " . $raw);
         }
 
         if ($raw === '' || $raw === null) {
-            throw new RuntimeException("Błąd HTTP {$code} przy zamykaniu sesji (pusta odpowiedź).");
+            throw new \RuntimeException("Błąd HTTP {$code} przy zamykaniu sesji (pusta odpowiedź).");
         }
         $maybe = json_decode($raw, true);
         if (is_array($maybe) && isset($maybe['Exception'])) {
             $msg = $this->formatKsefException($maybe['Exception']);
-            throw new RuntimeException("Błąd HTTP {$code} (close session): {$msg}");
+            throw new \RuntimeException("Błąd HTTP {$code} (close session): {$msg}");
         }
-        throw new RuntimeException("Błąd HTTP {$code} (close session): " . $raw);
+        throw new \RuntimeException("Błąd HTTP {$code} (close session): " . $raw);
     }
 
     /**
@@ -915,7 +915,7 @@ XML;
      * Endpoint:
      *   GET /api/v2/sessions/{referenceNumber}/invoices/{invoiceReferenceNumber}
      *
-     * @throws RuntimeException
+     * @throws \RuntimeException
      */
     public function getInvoiceStatusFromSession(
         string $accessToken,
@@ -944,7 +944,7 @@ XML;
         if ($raw === false) {
             $err = curl_error($ch);
             curl_close($ch);
-            throw new RuntimeException('cURL error przy pobieraniu statusu faktury: ' . $err);
+            throw new \RuntimeException('cURL error przy pobieraniu statusu faktury: ' . $err);
         }
 
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -953,7 +953,7 @@ XML;
         if ($code === 200) {
             $decoded = json_decode($raw, true);
             if (!is_array($decoded)) {
-                throw new RuntimeException('Niepoprawny JSON (200) przy pobieraniu statusu faktury: ' . $raw);
+                throw new \RuntimeException('Niepoprawny JSON (200) przy pobieraniu statusu faktury: ' . $raw);
             }
             return $decoded;
         }
@@ -962,22 +962,22 @@ XML;
             $err = json_decode($raw, true);
             if (is_array($err) && isset($err['Exception'])) {
                 $msg = $this->formatKsefException($err['Exception']);
-                throw new RuntimeException("KSeF 400 (status faktury): {$msg}");
+                throw new \RuntimeException("KSeF 400 (status faktury): {$msg}");
             }
-            throw new RuntimeException("KSeF 400 (status faktury): " . $raw);
+            throw new \RuntimeException("KSeF 400 (status faktury): " . $raw);
         }
 
         $maybe = json_decode($raw, true);
         if (is_array($maybe) && isset($maybe['Exception'])) {
             $msg = $this->formatKsefException($maybe['Exception']);
-            throw new RuntimeException("Błąd HTTP {$code} (status faktury): {$msg}");
+            throw new \RuntimeException("Błąd HTTP {$code} (status faktury): {$msg}");
         }
 
         if ($raw === '' || $raw === null) {
-            throw new RuntimeException("Błąd HTTP {$code} przy pobieraniu statusu faktury (pusta odpowiedź).");
+            throw new \RuntimeException("Błąd HTTP {$code} przy pobieraniu statusu faktury (pusta odpowiedź).");
         }
 
-        throw new RuntimeException("Błąd HTTP {$code} (status faktury): " . $raw);
+        throw new \RuntimeException("Błąd HTTP {$code} (status faktury): " . $raw);
     }
 
     /**
@@ -986,7 +986,7 @@ XML;
      * Endpoint:
      *   GET /api/v2/sessions/{referenceNumber}/invoices/ksef/{ksefNumber}/upo
      *
-     * @throws RuntimeException
+     * @throws \RuntimeException
      */
     public function getInvoiceUpoFromSession(
         string $accessToken,
@@ -1015,7 +1015,7 @@ XML;
         if ($raw === false) {
             $err = curl_error($ch);
             curl_close($ch);
-            throw new RuntimeException('cURL error przy pobieraniu UPO: ' . $err);
+            throw new \RuntimeException('cURL error przy pobieraniu UPO: ' . $err);
         }
 
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -1031,10 +1031,10 @@ XML;
                 $exNode = $err['Exception'] ?? $err['exception'];
                 if (is_array($exNode)) {
                     $msg = $this->formatKsefException($exNode);
-                    throw new RuntimeException("KSeF 400 (UPO): {$msg}");
+                    throw new \RuntimeException("KSeF 400 (UPO): {$msg}");
                 }
             }
-            throw new RuntimeException("KSeF 400 (UPO): " . $raw);
+            throw new \RuntimeException("KSeF 400 (UPO): " . $raw);
         }
 
         $maybe = json_decode($raw, true);
@@ -1042,15 +1042,15 @@ XML;
             $exNode = $maybe['Exception'] ?? $maybe['exception'];
             if (is_array($exNode)) {
                 $msg = $this->formatKsefException($exNode);
-                throw new RuntimeException("Błąd HTTP {$code} (UPO): {$msg}");
+                throw new \RuntimeException("Błąd HTTP {$code} (UPO): {$msg}");
             }
         }
 
         if ($raw === '' || $raw === null) {
-            throw new RuntimeException("Błąd HTTP {$code} przy pobieraniu UPO (pusta odpowiedź).");
+            throw new \RuntimeException("Błąd HTTP {$code} przy pobieraniu UPO (pusta odpowiedź).");
         }
 
-        throw new RuntimeException("Błąd HTTP {$code} (UPO): " . $raw);
+        throw new \RuntimeException("Błąd HTTP {$code} (UPO): " . $raw);
     }
 
     /**

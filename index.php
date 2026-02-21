@@ -13,7 +13,7 @@ require __DIR__ . '/KSeFClient.php';
 $nip      = '1111111111';
 $crtPath  = __DIR__ . '/main_nip.crt';                                                          // Dla wyjaśnienia: projekt testowy pobiera te dane z plików niezakodowanych. W środowisku
 $keyPath  = __DIR__ . '/main_nip.key';                                                          // produkcyjnym jest to niedopuszczalne — dane powinny być przechowywane np. w bazie, w formie
-$keyPass  = trim(@file_get_contents(__DIR__ . '/pass.txt')) ?: null; // null jeśli bez hasła    // zaszyfrowanej. Dopiero podczas użycia powinny być odszyfrowywane i wykorzystywane, i to wyłącznie po stronie serwera.
+$keyPass = trim((string)@file_get_contents(__DIR__ . '/pass.txt')) ?: null; // null jeśli bez hasła    // zaszyfrowanej. Dopiero podczas użycia powinny być odszyfrowywane i wykorzystywane, i to wyłącznie po stronie serwera.
 $baseUrl  = 'https://ksef-test.mf.gov.pl';
 
 // Stała ścieżka do pliku faktury FA(3), bez uploadu
@@ -59,16 +59,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send'
         $ivB64       = (string)($_SESSION['ivB64']            ?? '');
 
         if ($accessToken === '' || $sessionRef === '' || $aesKeyB64 === '' || $ivB64 === '') {
-            throw new RuntimeException('Brak parametrów sesji (accessToken / sessionRef / aesKeyB64 / ivB64). Otwórz lub odśwież sesję.');
+            throw new \RuntimeException('Brak parametrów sesji (accessToken / sessionRef / aesKeyB64 / ivB64). Otwórz lub odśwież sesję.');
         }
 
         if (!is_file($invoiceXmlPath)) {
-            throw new RuntimeException('Brak pliku faktury FA(3) pod ścieżką: ' . $invoiceXmlPath);
+            throw new \RuntimeException('Brak pliku faktury FA(3) pod ścieżką: ' . $invoiceXmlPath);
         }
 
         $xml = file_get_contents($invoiceXmlPath);
         if ($xml === false || $xml === '') {
-            throw new RuntimeException('Plik faktury FA(3) jest pusty lub nieczytelny: ' . $invoiceXmlPath);
+            throw new \RuntimeException('Plik faktury FA(3) jest pusty lub nieczytelny: ' . $invoiceXmlPath);
         }
 
         // Szyfruj fakturę (AES-256-CBC + PKCS#7)
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send'
 
         $sendResp = $ksef->sendEncryptedInvoice($accessToken, $sessionRef, $payload);
         $_SESSION['lastSendRef'] = $sendResp['referenceNumber'] ?? null;
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         $sendError = $e->getMessage();
     }
 }
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'close
         $sessionRef  = (string)($_SESSION['sessionReference'] ?? '');
 
         if ($accessToken === '' || $sessionRef === '') {
-            throw new RuntimeException('Brak accessToken lub sessionReference. Nie można zamknąć sesji.');
+            throw new \RuntimeException('Brak accessToken lub sessionReference. Nie można zamknąć sesji.');
         }
 
         $ok = $ksef->closeInteractiveSession($accessToken, $sessionRef);
@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'close
             $_SESSION['ivB64']            = '';
             $_SESSION['encKeyB64']        = '';
         }
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         $closeError = $e->getMessage();
     }
 }
@@ -129,10 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'check
         $invoiceRef  = (string)($_SESSION['lastSendRef']      ?? '');
 
         if ($accessToken === '' || $sessionRef === '') {
-            throw new RuntimeException('Brak accessToken lub sessionReference. Nie można pobrać statusu.');
+            throw new \RuntimeException('Brak accessToken lub sessionReference. Nie można pobrać statusu.');
         }
         if ($invoiceRef === '') {
-            throw new RuntimeException('Brak numeru referencyjnego faktury (lastSendRef). Wyślij najpierw fakturę.');
+            throw new \RuntimeException('Brak numeru referencyjnego faktury (lastSendRef). Wyślij najpierw fakturę.');
         }
 
         $statusData = $ksef->getInvoiceStatusFromSession($accessToken, $sessionRef, $invoiceRef);
@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'check
             $_SESSION['lastKsefNumber'] = $ksefNumber;
         }
 
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         $statusError = $e->getMessage();
     }
 }
@@ -172,10 +172,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'get_u
         }
 
         if ($accessToken === '' || $sessionRef === '') {
-            throw new RuntimeException('Brak accessToken lub sessionReference. Nie można pobrać UPO.');
+            throw new \RuntimeException('Brak accessToken lub sessionReference. Nie można pobrać UPO.');
         }
         if ($ksefNumber === '') {
-            throw new RuntimeException('Brak numeru KSeF. Najpierw pobierz status faktury (kod 200), aby pozyskać numer KSeF, lub wpisz go ręcznie.');
+            throw new \RuntimeException('Brak numeru KSeF. Najpierw pobierz status faktury (kod 200), aby pozyskać numer KSeF, lub wpisz go ręcznie.');
         }
 
         $upoXml = $ksef->getInvoiceUpoFromSession($accessToken, $sessionRef, $ksefNumber);
@@ -183,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'get_u
         // zapamiętaj ostatnio użyty numer KSeF
         $_SESSION['lastKsefNumber'] = $ksefNumber;
 
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         $upoError = $e->getMessage();
     }
 }
@@ -221,11 +221,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $_SESSION['aesKeyB64']        = $encPrep['aesKeyB64'] ?? '';
                 $_SESSION['ivB64']            = $encPrep['ivB64'] ?? '';
                 $_SESSION['encKeyB64']        = $encPrep['encKeyB64'] ?? '';
-            } catch (Throwable $eOpen) {
+            } catch (\Throwable $eOpen) {
                 $openError = $eOpen->getMessage();
             }
         }
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         $authError = $e->getMessage();
     }
 }
@@ -241,10 +241,10 @@ $lastKsefNumber  = (string)($_SESSION['lastKsefNumber']  ?? '');
 $validUtc = $validPl = '';
 if ($validUntilStr !== '') {
     try {
-        $dtUtc = new DateTime($validUntilStr);
-        $validUtc = $dtUtc->setTimezone(new DateTimeZone('UTC'))->format(DateTime::ATOM);
-        $dtPl  = new DateTime($validUntilStr);
-        $dtPl->setTimezone(new DateTimeZone('Europe/Warsaw'));
+        $dtUtc = new \DateTime($validUntilStr);
+        $validUtc = $dtUtc->setTimezone(new \DateTimeZone('UTC'))->format(\DateTime::ATOM);
+        $dtPl  = new \DateTime($validUntilStr);
+        $dtPl->setTimezone(new \DateTimeZone('Europe/Warsaw'));
         $validPl = $dtPl->format('Y-m-d H:i:s T');
     } catch (\Throwable $e) { /* ignore */ }
 }
