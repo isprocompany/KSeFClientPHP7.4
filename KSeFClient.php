@@ -682,7 +682,7 @@ XML;
 
     private function absoluteUrl(string $path): string
     {
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) return $path;
+        if (strpos($path, 'http://') === 0 || strpos($path, 'https://') === 0) return $path;
         return $this->baseUrl . '/' . ltrim($path, '/');
     }
 
