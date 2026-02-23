@@ -14,7 +14,7 @@ $nip      = '1111111111';
 $crtPath  = __DIR__ . '/main_nip.crt';                                                          // Dla wyjaśnienia: projekt testowy pobiera te dane z plików niezakodowanych. W środowisku
 $keyPath  = __DIR__ . '/main_nip.key';                                                          // produkcyjnym jest to niedopuszczalne — dane powinny być przechowywane np. w bazie, w formie
 $keyPass = trim((string)@file_get_contents(__DIR__ . '/pass.txt')) ?: null; // null jeśli bez hasła    // zaszyfrowanej. Dopiero podczas użycia powinny być odszyfrowywane i wykorzystywane, i to wyłącznie po stronie serwera.
-$baseUrl  = 'https://ksef-test.mf.gov.pl';
+$baseUrl  = 'https://api-test.ksef.mf.gov.pl/v2';
 
 // Stała ścieżka do pliku faktury FA(3), bez uploadu
 $invoiceXmlPath = __DIR__ . '/fa3.xml';

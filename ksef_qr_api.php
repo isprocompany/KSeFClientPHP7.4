@@ -86,7 +86,7 @@ if (isset($_FILES['xml_file'])) {
     // Wymagane pola z POST (z formularza / cURL -F)
     $dataWystawienia = $_POST['data_wystawienia'] ?? null;
     $nipSprzedawcy   = $_POST['nip_sprzedawcy']   ?? null;
-    $ulrApi          = $_POST['ulr_api']          ?? 'https://ksef-test.mf.gov.pl/';
+    $ulrApi          = $_POST['ulr_api']          ?? 'https://api-test.ksef.mf.gov.pl/v2';
 
     $errors = [];
 
@@ -142,7 +142,7 @@ if (isset($_FILES['xml_file'])) {
     $skrotSha256     = $data['skrot_sha256']     ?? null;   // opcjonalne
     $xmlBase64       = $data['xml_base64']       ?? null;
     $xmlRaw          = $data['xml_raw']          ?? null;
-    $ulrApi          = $data['ulr_api']          ?? 'https://ksef-test.mf.gov.pl/';
+    $ulrApi          = $data['ulr_api']          ?? 'https://api-test.ksef.mf.gov.pl/v2';
 
     $errors = [];
 

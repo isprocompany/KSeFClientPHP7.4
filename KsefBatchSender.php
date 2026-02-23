@@ -22,7 +22,7 @@ class KsefBatchSender
     private \PDO $pdo;
     private string $masterKey;
 
-    private string $apiUrl;              // address z ksef_addres_api (np. https://ksef-test.mf.gov.pl)
+    private string $apiUrl;              // address z ksef_addres_api (np. https://api-test.ksef.mf.gov.pl/v2)
     private string $nip;                 // nip z ksef_addres_api
     private bool  $saveZipDebug = false; // domyślnie: nie zapisuje ZIP
 
@@ -212,7 +212,7 @@ class KsefBatchSender
     }
 
 /**
- * Pobiera informacje o konkretnej sesji wsadowej przez /api/v2/sessions
+ * Pobiera informacje o konkretnej sesji wsadowej przez /sessions
  * (typ Batch + filtr po referenceNumber) i ładnie wypisuje.
  */
 public function showBatchSessionFromList(string $referenceNumber): void
@@ -260,7 +260,7 @@ public function showBatchSessionFromList(string $referenceNumber): void
 
 
     /**
- * GET /api/v2/sessions
+ * GET /sessions
  * Zwraca listę sesji wg kryteriów (tu: typ Batch, filtr po referenceNumber).
  */
 private function callSessionsListEndpoint(array $query): array
@@ -423,7 +423,7 @@ HT;
             throw new \RuntimeException('Brak aktywnej konfiguracji KSeF (ksef_addres_api.selected = 1).');
         }
 
-        $this->apiUrl = rtrim(trim((string)$row['address']), '/'); // np. https://ksef-test.mf.gov.pl
+        $this->apiUrl = rtrim(trim((string)$row['address']), '/'); // np. https://api-test.ksef.mf.gov.pl/v2
         $this->nip    = trim((string)$row['nip']);
 
         if ($this->apiUrl === '') {
@@ -725,7 +725,7 @@ HT;
     }
 
         /**
-     * GET /api/v2/sessions/{referenceNumber}/invoices
+     * GET /sessions/{referenceNumber}/invoices
      * Zwraca listę faktur w danej sesji (w tym wsadowej).
      */
     private function callSessionInvoicesEndpoint(
@@ -909,11 +909,11 @@ HT;
     }
 
     /**
-     * POST /api/v2/sessions/batch/{referenceNumber}/close
+     * POST /sessions/batch/{referenceNumber}/close
      * Zamyka sesję wsadową – informuje KSeF, że wszystkie pliki zostały przesłane.
      */
         /**
-     * POST /api/v2/sessions/batch/{referenceNumber}/close
+     * POST /sessions/batch/{referenceNumber}/close
      * Zamyka sesję wsadową – informuje KSeF, że wszystkie pliki zostały przesłane.
      */
     public function closeBatch(string $referenceNumber): array
@@ -997,7 +997,7 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
 
 
     /**
-     * GET /api/v2/sessions/{referenceNumber}
+     * GET /sessions/{referenceNumber}
      * Zwraca status sesji (online/wsadowej).
      */
     private function callSessionStatusEndpoint(string $referenceNumber): array
@@ -1041,7 +1041,7 @@ public function listBatchInvoices(string $referenceNumber, bool $updateDb = true
     }
 
     /**
-     * POST /api/v2/sessions/batch/{referenceNumber}/submit
+     * POST /sessions/batch/{referenceNumber}/submit
      * Zgłoszenie wsadu do przetwarzania.
      */
     private function callBatchSubmitEndpoint(string $referenceNumber): array

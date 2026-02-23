@@ -34,9 +34,9 @@ KSeFXAdESClient to lekka klasa PHP obsługująca KSeF v2 (2.0) z wykorzystaniem:
 
 - podpisu XAdES (xmlsec1 + Twój certyfikat KSeF),
 
-- pełnego procesu uwierzytelnienia (/api/v2/auth/...),
+- pełnego procesu uwierzytelnienia (/auth/...),
 
-- interaktywnej sesji online (/api/v2/sessions/online),
+- interaktywnej sesji online (/sessions/online),
 
 - szyfrowania faktur FA(3) algorytmem AES-256-CBC,
 
@@ -99,17 +99,17 @@ Cała logika KSeF (uwierzytelnienie, podpis XAdES, szyfrowanie AES, walidacja FA
 
 🔐 Uwierzytelnienie XAdES z użyciem certyfikatu KSeF:
 
-POST /api/v2/auth/challenge
+POST /auth/challenge
 
 - podpis XAdES żądania przez xmlsec1
 
-POST /api/v2/auth/xades-signature → authenticationToken (krótkożyjący JWT)
+POST /auth/xades-signature → authenticationToken (krótkożyjący JWT)
 
-POST /api/v2/auth/access-token → accessToken + refreshToken
+POST /auth/access-token → accessToken + refreshToken
 
 🔑 Pobranie kluczy publicznych KSeF:
 
-GET /api/v2/security/public-key-certificates
+GET /security/public-key-certificates
 
 filtrowanie po usage = SymmetricKeyEncryption
 
@@ -125,7 +125,7 @@ zwrot: encKeyB64, aesKeyB64, ivB64.
 
 💬 Sesja interaktywna online (FA(3)):
 
-POST /api/v2/sessions/online
+POST /sessions/online
 
 deklaracja formy FA(3):
 systemCode: "FA (3)", schemaVersion: "1-0E"
@@ -138,7 +138,7 @@ szyfrowanie XML algorytmem AES-256-CBC (PKCS#7),
 
 obliczanie hashy i rozmiarów (plain i encrypted),
 
-POST /api/v2/sessions/online/{ref}/invoices
+POST /sessions/online/{ref}/invoices
 
 ℹ️ Narzędzia pomocnicze:
 
@@ -190,7 +190,7 @@ $client = new KSeFXAdESClient(
     certPath: __DIR__ . '/certs/ksef-cert.pem',
     keyPath:  __DIR__ . '/certs/ksef-key.pem',
     keyPass:  'haslo-do-klucza',
-    baseUrl:  'https://ksef-test.mf.gov.pl'
+    baseUrl:  'https://api-test.ksef.mf.gov.pl/v2'
 );
 
 // $client->withHttpDebug(true); // debug opcjonalny
@@ -248,7 +248,7 @@ Dane wejściowe (JSON)
   "data_wystawienia": "01-02-2026",
   "nip_sprzedawcy": "1111111111",
   "skrot_sha256": "UtQp9Gpc51y-u3xApZjIjgkpZ01js-J8KflSPW8WzIE",
-  "ulr_api": "https://ksef-test.mf.gov.pl/"
+  "ulr_api": "https://api-test.ksef.mf.gov.pl/v2"
 }
 
 ```
@@ -257,7 +257,7 @@ Dane wejściowe (JSON)
 | **data_wystawienia** | Data faktury (`DD-MM-RRRR` lub `RRRR-MM-DD`)              |
 | **nip_sprzedawcy**   | 10-cyfrowy NIP sprzedawcy                                 |
 | **skrot_sha256**     | Skrót SHA-256 faktury w Base64URL                         |
-| **ulr_api**          | Adres API KSeF (domyślnie `https://ksef-test.mf.gov.pl/`) |
+| **ulr_api**          | Adres API KSeF (domyślnie `https://api-test.ksef.mf.gov.pl/v2`) |
 
 CURL – przykład
 ```bash
@@ -265,7 +265,7 @@ curl -X POST "https://serwer.pl/ksef/ksef_qr_api.php?key=xxx" \
   -F "xml_file=@fa3.xml" \
   -F "data_wystawienia=14-11-2025" \
   -F "nip_sprzedawcy=1111111111" \
-  -F "ulr_api=https://ksef-test.mf.gov.pl/" \
+  -F "ulr_api=https://api-test.ksef.mf.gov.pl/v2" \
   --remote-header-name \
   --remote-name
 ```

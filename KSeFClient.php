@@ -3,12 +3,12 @@ declare(strict_types=1);
 
 /**
  * KSeFXAdESClient — KSeF v2:
- *  1) POST /api/v2/auth/challenge
- *  2) XAdES (xmlsec1) -> POST /api/v2/auth/xades-signature => authenticationToken (JWT, krótkożyjący)
- *  3) POST /api/v2/auth/access-token                      => accessToken + refreshToken (jednorazowo)
- *  4) GET  /api/v2/security/public-key-certificates
- *  5) POST /api/v2/sessions/online                        => sesja interaktywna (deklaracja RSA-OAEP klucza AES + IV)
- *  6) POST /api/v2/sessions/online/{ref}/invoices         => wysyłka zaszyfrowanej faktury FA(3)
+ *  1) POST /auth/challenge
+ *  2) XAdES (xmlsec1) -> POST /auth/xades-signature => authenticationToken (JWT, krótkożyjący)
+ *  3) POST /auth/access-token                      => accessToken + refreshToken (jednorazowo)
+ *  4) GET  /security/public-key-certificates
+ *  5) POST /sessions/online                        => sesja interaktywna (deklaracja RSA-OAEP klucza AES + IV)
+ *  6) POST /sessions/online/{ref}/invoices         => wysyłka zaszyfrowanej faktury FA(3)
  */
 final class KSeFXAdESClient
 {
@@ -24,7 +24,7 @@ final class KSeFXAdESClient
         string $certPath,
         string $keyPath,
         ?string $keyPass,
-        string $baseUrl = 'https://ksef-test.mf.gov.pl'
+        string $baseUrl = 'https://api-test.ksef.mf.gov.pl/v2'
     ) {
         $this->nip      = $nip;
         $this->certPath = $certPath;
@@ -138,7 +138,7 @@ final class KSeFXAdESClient
     // ===== KROK 1: challenge =====
     private function getChallenge(): string
     {
-        $url = $this->absoluteUrl('/api/v2/auth/challenge');
+        $url = $this->absoluteUrl('/auth/challenge');
         $payload = json_encode(['contextIdentifier' => ['nip' => $this->nip]], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
 
         $ch = curl_init($url);
@@ -311,7 +311,7 @@ XML;
     // ===== KROK 4: xades-signature -> authenticationToken =====
     private function postXmlForToken(string $signedXml): array
     {
-        $url = $this->absoluteUrl('/api/v2/auth/xades-signature?verifyCertificateChain=false');
+        $url = $this->absoluteUrl('/auth/xades-signature?verifyCertificateChain=false');
 
         $ch = curl_init($url);
         $this->applyCommonCurl($ch, ['Content-Type: application/xml', 'Accept: application/json'], 'POST', 60);
@@ -332,7 +332,7 @@ XML;
     // ===== KROK 5: redeem authToken -> accessToken =====
     private function redeemAccessToken(string $authenticationToken): array
     {
-        $urlPrimary = $this->absoluteUrl('/api/v2/auth/access-token');
+        $urlPrimary = $this->absoluteUrl('/auth/access-token');
 
         $ch = curl_init($urlPrimary);
         $this->applyCommonCurl($ch, ['Authorization: Bearer ' . $authenticationToken, 'Accept: application/json'], 'POST', 30);
@@ -356,7 +356,7 @@ XML;
         }
 
         if ($code === 401) {
-            $urlAlt = $this->absoluteUrl('/api/v2/auth/token/redeem');
+            $urlAlt = $this->absoluteUrl('/auth/token/redeem');
             $ch = curl_init($urlAlt);
             $this->applyCommonCurl($ch, ['Authorization: Bearer ' . $authenticationToken, 'Accept: application/json'], 'POST', 30);
             $rawAlt = curl_exec($ch);
@@ -405,13 +405,13 @@ XML;
             }
         }
         $body = ['formCode' => $formCode, 'encryption' => $encryption];
-        return $this->callProtected('/api/v2/sessions/online', $accessToken, $body, 'POST');
+        return $this->callProtected('/sessions/online', $accessToken, $body, 'POST');
     }
 
     // ===== Publiczne certyfikaty KSeF =====
     public function getPublicKeyCertificates(): array
     {
-        $url = $this->absoluteUrl('/api/v2/security/public-key-certificates');
+        $url = $this->absoluteUrl('/security/public-key-certificates');
         $ch = curl_init($url);
         $this->applyCommonCurl($ch, ['Accept: application/json'], 'GET', 30);
 
@@ -593,7 +593,7 @@ XML;
     // ===== Wysyłka zaszyfrowanej faktury =====
 
     /**
-     * POST /api/v2/sessions/online/{referenceNumber}/invoices
+     * POST /sessions/online/{referenceNumber}/invoices
      * Payload: invoiceHash, invoiceSize, encryptedInvoiceHash, encryptedInvoiceSize, encryptedInvoiceContent, offlineMode
      * Zwraca (202): ["referenceNumber" => "..."]
      */
@@ -604,7 +604,7 @@ XML;
                 throw new \InvalidArgumentException("Brak wymaganego pola payload['{$k}'].");
             }
         }
-        $path = "/api/v2/sessions/online/" . rawurlencode($sessionReferenceNumber) . "/invoices";
+        $path = "/sessions/online/" . rawurlencode($sessionReferenceNumber) . "/invoices";
         return $this->callProtected($path, $accessToken, $payload, 'POST');
     }
 
@@ -856,7 +856,7 @@ XML;
 
     /**
      * Zamknięcie sesji interaktywnej i start generowania zbiorczego UPO.
-     * Endpoint: POST /api/v2/sessions/online/{referenceNumber}/close
+     * Endpoint: POST /sessions/online/{referenceNumber}/close
      *
      * Sukces: 204 (No Content)
      * Błąd  : 400 (JSON z "Exception"…) -> rzuca \RuntimeException z opisem.
@@ -866,7 +866,7 @@ XML;
      */
     public function closeInteractiveSession(string $accessToken, string $sessionReferenceNumber): bool
     {
-        $url = $this->absoluteUrl('/api/v2/sessions/online/' . rawurlencode($sessionReferenceNumber) . '/close');
+        $url = $this->absoluteUrl('/sessions/online/' . rawurlencode($sessionReferenceNumber) . '/close');
 
         $ch = curl_init($url);
         $headers = [
@@ -913,7 +913,7 @@ XML;
      * Pobranie statusu faktury z sesji interaktywnej.
      *
      * Endpoint:
-     *   GET /api/v2/sessions/{referenceNumber}/invoices/{invoiceReferenceNumber}
+     *   GET /sessions/{referenceNumber}/invoices/{invoiceReferenceNumber}
      *
      * @throws \RuntimeException
      */
@@ -923,7 +923,7 @@ XML;
         string $invoiceReference
     ): array {
         $url = $this->absoluteUrl(
-            '/api/v2/sessions/' . rawurlencode($sessionReference)
+            '/sessions/' . rawurlencode($sessionReference)
             . '/invoices/' . rawurlencode($invoiceReference)
         );
 
@@ -984,7 +984,7 @@ XML;
      * Pobranie UPO faktury z sesji na podstawie numeru KSeF.
      *
      * Endpoint:
-     *   GET /api/v2/sessions/{referenceNumber}/invoices/ksef/{ksefNumber}/upo
+     *   GET /sessions/{referenceNumber}/invoices/ksef/{ksefNumber}/upo
      *
      * @throws \RuntimeException
      */
@@ -994,7 +994,7 @@ XML;
         string $ksefNumber
     ): string {
         $url = $this->absoluteUrl(
-            '/api/v2/sessions/' . rawurlencode($sessionReference) .
+            '/sessions/' . rawurlencode($sessionReference) .
             '/invoices/ksef/' . rawurlencode($ksefNumber) .
             '/upo'
         );
