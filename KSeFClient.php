@@ -86,7 +86,7 @@ final class KSeFXAdESClient
                 'rawAccess'    => $accessResp,
             ];
         } catch (\RuntimeException $e) {
-            if (str_contains($e->getMessage(), 'HTTP 401')) {
+            if (strpos($e->getMessage(), 'HTTP 401') !== false) {
                 return [
                     'authToken'   => (string)$authToken,
                     'validUntil'  => $validUntil ?: null,
