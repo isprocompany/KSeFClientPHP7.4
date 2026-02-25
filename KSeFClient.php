@@ -4,11 +4,12 @@ declare(strict_types=1);
 /**
  * KSeFXAdESClient — KSeF v2:
  *  1) POST /auth/challenge
- *  2) XAdES (xmlsec1) -> POST /auth/xades-signature => authenticationToken (JWT, krótkożyjący)
- *  3) POST /auth/access-token                      => accessToken + refreshToken (jednorazowo)
- *  4) GET  /security/public-key-certificates
- *  5) POST /sessions/online                        => sesja interaktywna (deklaracja RSA-OAEP klucza AES + IV)
- *  6) POST /sessions/online/{ref}/invoices         => wysyłka zaszyfrowanej faktury FA(3)
+ *  2) XAdES (xmlsec1) -> POST /auth/xades-signature => authenticationToken (JWT, krótkożyjący) + referenceNumber (operacja asynchroniczna)
+ *  3) GET  /auth/{referenceNumber}                  => status operacji (polling do status.code == 200)
+ *  4) POST /auth/token/redeem                       => accessToken + refreshToken (jednorazowo)
+ *  5) GET  /security/public-key-certificates
+ *  6) POST /sessions/online                         => sesja interaktywna (deklaracja RSA-OAEP klucza AES + IV)
+ *  7) POST /sessions/online/{ref}/invoices          => wysyłka zaszyfrowanej faktury FA(3)
  */
 final class KSeFXAdESClient
 {
@@ -65,23 +66,31 @@ final class KSeFXAdESClient
         $xmlUnsigned = $this->buildAuthXml($challenge);
         $xmlSigned   = $this->signXmlWithXmlSec1($xmlUnsigned);
 
-        $authResp   = $this->postXmlForToken($xmlSigned);
-        $authToken  = $authResp['authenticationToken']['token']      ?? null;
-        $validUntil = $authResp['authenticationToken']['validUntil'] ?? null;
-        if (!$authToken) {
-            throw new \RuntimeException('Brak authenticationToken.token: ' . json_encode($authResp, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+        $authResp     = $this->postXmlForToken($xmlSigned);
+        $authToken    = $authResp['authenticationToken']['token'] ?? null;
+        $referenceNum = $authResp['referenceNumber'] ?? null;
+        $validUntil   = $authResp['authenticationToken']['validUntil'] ?? null;
+
+        if (!is_string($authToken) || $authToken === '' || !is_string($referenceNum) || $referenceNum === '') {
+            throw new \RuntimeException('Brak authenticationToken lub referenceNumber: ' . json_encode($authResp, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         }
+
+        $this->pollAuthStatus($authToken, $referenceNum, 20, 2);
 
         try {
             $accessResp   = $this->redeemAccessToken($authToken);
             $accessToken  = $this->normalizeTokenField($accessResp['accessToken']  ?? null);
             $refreshToken = $this->normalizeTokenField($accessResp['refreshToken'] ?? null);
 
+            if (!is_string($accessToken) || $accessToken === '') {
+                throw new \RuntimeException('Brak accessToken w odpowiedzi /auth/token/redeem: ' . json_encode($accessResp, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+
             return [
-                'authToken'    => (string)$authToken,
-                'accessToken'  => (string)$accessToken,
-                'refreshToken' => $refreshToken ? (string)$refreshToken : null,
-                'validUntil'   => $validUntil ?: null,
+                'authToken'    => (string) $authToken,
+                'accessToken'  => (string) $accessToken,
+                'refreshToken' => (is_string($refreshToken) && $refreshToken !== '') ? $refreshToken : null,
+                'validUntil'   => is_string($validUntil) && $validUntil !== '' ? $validUntil : null,
                 'rawAuth'      => $authResp,
                 'rawAccess'    => $accessResp,
             ];
@@ -308,7 +317,7 @@ XML;
     }
 
 
-    // ===== KROK 4: xades-signature -> authenticationToken =====
+    // ===== KROK 4: xades-signature -> authenticationToken + referenceNumber =====
     private function postXmlForToken(string $signedXml): array
     {
         $url = $this->absoluteUrl('/auth/xades-signature?verifyCertificateChain=false');
@@ -329,58 +338,118 @@ XML;
         return $decoded;
     }
 
-    // ===== KROK 5: redeem authToken -> accessToken =====
-    private function redeemAccessToken(string $authenticationToken): array
+    // ===== KROK 5: status uwierzytelniania (polling) =====
+    private function pollAuthStatus(string $authenticationToken, string $referenceNumber, int $maxAttempts = 20, int $delaySeconds = 2): void
     {
-        $urlPrimary = $this->absoluteUrl('/auth/access-token');
+        $url = $this->absoluteUrl('/auth/' . rawurlencode($referenceNumber));
 
-        $ch = curl_init($urlPrimary);
-        $this->applyCommonCurl($ch, ['Authorization: Bearer ' . $authenticationToken, 'Accept: application/json'], 'POST', 30);
-        $raw = curl_exec($ch);
-        $info = curl_getinfo($ch);
-        $code = (int)($info['http_code'] ?? 0);
-        $err  = $raw === false ? curl_error($ch) : null;
-        curl_close($ch);
-
-        if ($raw === false) throw new \RuntimeException('cURL error (access-token): ' . $err);
-
-        if ($code === 405) { // fallback GET (historyczne zachowanie)
-            $ch = curl_init($urlPrimary);
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $ch = curl_init($url);
             $this->applyCommonCurl($ch, ['Authorization: Bearer ' . $authenticationToken, 'Accept: application/json'], 'GET', 30);
-            $raw = curl_exec($ch);
-            $info= curl_getinfo($ch);
-            $code= (int)($info['http_code'] ?? 0);
-            $err = $raw === false ? curl_error($ch) : null;
-            curl_close($ch);
-            if ($raw === false) throw new \RuntimeException('cURL error (access-token GET): ' . $err);
-        }
 
-        if ($code === 401) {
-            $urlAlt = $this->absoluteUrl('/auth/token/redeem');
-            $ch = curl_init($urlAlt);
-            $this->applyCommonCurl($ch, ['Authorization: Bearer ' . $authenticationToken, 'Accept: application/json'], 'POST', 30);
-            $rawAlt = curl_exec($ch);
-            $infoAlt= curl_getinfo($ch);
-            $codeAlt= (int)($infoAlt['http_code'] ?? 0);
-            $errAlt = $rawAlt === false ? curl_error($ch) : null;
+            $raw  = curl_exec($ch);
+            $info = curl_getinfo($ch);
+            $code = (int)($info['http_code'] ?? 0);
+            $err  = $raw === false ? curl_error($ch) : null;
+
             curl_close($ch);
 
-            if ($rawAlt !== false) {
-                $decAlt = json_decode($rawAlt, true);
-                if ($codeAlt < 400 && is_array($decAlt)) return $decAlt;
+            if ($raw === false) {
+                throw new \RuntimeException('cURL error (auth status): ' . $err);
+            }
+
+            if ($code === 429) {
+                if ($attempt >= $maxAttempts) {
+                    throw new \RuntimeException("Błąd HTTP 429 (rate limit) przy auth status po {$maxAttempts} próbach: "
+                        . json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                }
+                sleep(max(1, $delaySeconds));
+                continue;
+            }
+
+            $decoded = json_decode($raw, true);
+            if (!is_array($decoded)) {
+                throw new \RuntimeException("Niepoprawny JSON z auth status (HTTP {$code}): " . $raw);
+            }
+
+            if ($code >= 400) {
+                throw new \RuntimeException("Błąd HTTP {$code} przy auth status: "
+                    . json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+
+            $status = $decoded['status'] ?? null;
+            $statusCode = (is_array($status) && isset($status['code'])) ? (int) $status['code'] : null;
+            $statusDesc = (is_array($status) && isset($status['description'])) ? (string) $status['description'] : '';
+            $detailsArr = (is_array($status) && isset($status['details']) && is_array($status['details'])) ? $status['details'] : [];
+
+            if ($statusCode === null) {
+                throw new \RuntimeException("Brak status.code w odpowiedzi /auth/{$referenceNumber}: " . json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+
+            if ($statusCode === 200) {
+                return;
+            }
+
+            if ($statusCode === 100) {
+                if ($attempt >= $maxAttempts) {
+                    throw new \RuntimeException(
+                        "Timeout przy auth status.\n" . "Uwierzytelnianie w toku po {$maxAttempts} próbach (co {$delaySeconds}s).\n" .
+                        "Ostatni status: " . json_encode($status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                    );
+                }
+                sleep(max(1, $delaySeconds));
+                continue;
+            }
+
+            if ($code === 400) {
+                $msg = "Uwierzytelnianie zakończone niepowodzeniem (status.code=400)";
+                if ($statusDesc !== '') {
+                    $msg .= ": {$statusDesc}";
+                }
+                if (!empty($detailsArr)) {
+                    $msg .= "\nSzczegóły:\n- " . implode("\n- ", array_map('strval', $detailsArr));
+                }
+                $msg .= "\nreferenceNumber={$referenceNumber}";
+                throw new \RuntimeException($msg);
             }
 
             throw new \RuntimeException(
-                "Błąd HTTP 401 przy access-token.\n" .
-                "- Token auth jest jednorazowy – jeśli już był wymieniony, drugi raz się nie uda.\n" .
-                "- Sprawdź czy nie ma podwójnego reloadu oraz czy zegar (NTP) jest poprawny.\n" .
-                "Odpowiedź: " . ($raw ?: '(brak treści)')
+                "Nieoczekiwany status.code={$statusCode} przy auth status.\n" .
+                "Odpowiedź: " . json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
             );
         }
 
+        throw new \RuntimeException("Timeout: przekroczono liczbę prób {$maxAttempts} w pollAuthStatus().");
+    }
+
+    // ===== KROK 6: redeem authenticationToken -> accessToken + refreshToken =====
+    private function redeemAccessToken(string $authenticationToken): array
+    {
+        $urlPrimary = $this->absoluteUrl('/auth/token/redeem');
+
+        $ch = curl_init($urlPrimary);
+        $this->applyCommonCurl($ch, ['Authorization: Bearer ' . $authenticationToken, 'Accept: application/json'], 'POST', 30);
+
+        $raw = curl_exec($ch);
+        $info = curl_getinfo($ch);
+        $code = (int) ($info['http_code'] ?? 0);
+        $err = $raw === false ? curl_error($ch) : null;
+        curl_close($ch);
+
+        if ($raw === false) {
+            throw new \RuntimeException('cURL error (token redeem): ' . $err);
+        }
+
         $decoded = json_decode($raw, true);
-        if ($decoded === null) throw new \RuntimeException("Niepoprawny JSON z access-token (HTTP {$code}): " . $raw);
-        if ($code >= 400)     throw new \RuntimeException("Błąd HTTP {$code} przy access-token: " . json_encode($decoded, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+        if (!is_array($decoded)) {
+            throw new \RuntimeException("Niepoprawny JSON z token redeem (HTTP {$code}): " . $raw);
+        }
+
+        if ($code >= 400) {
+            throw new \RuntimeException("Błąd HTTP {$code} przy /auth/token/redeem: "
+                . json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+
         return $decoded;
     }
 
